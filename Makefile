@@ -1,5 +1,5 @@
 .DELETE_ON_ERROR:
-	
+
 clean:
 	rm -rf output/*
 
@@ -19,3 +19,11 @@ output/house/%_Registrations_Lobbyists.csv: data/files/house/%_Registrations_XML
 output/house/%_Registrations_Issues.csv: data/files/house/%_Registrations_XML.zip
 	mkdir -p $(dir $@)
 	./house_processor.py issues $< > $@
+
+output/house/%_Registrations_AffiliatedOrgs.csv: data/files/house/%_Registrations_XML.zip
+	mkdir -p $(dir $@)
+	./house_processor.py affiliated_orgs $< > $@
+
+output/house/%_Registrations_ForeignEntities.csv: data/files/house/%_Registrations_XML.zip
+	mkdir -p $(dir $@)
+	./house_processor.py foreign_entities $< > $@
