@@ -27,3 +27,7 @@ output/house/%_Registrations_AffiliatedOrgs.csv: data/files/house/%_Registration
 output/house/%_Registrations_ForeignEntities.csv: data/files/house/%_Registrations_XML.zip
 	mkdir -p $(dir $@)
 	./house_processor.py foreign_entities $< > $@
+
+output/house/%_Reports.csv: data/files/house/%_XML.zip
+	mkdir -p $(dir $@)
+	./house_processor.py reports $< > $@
