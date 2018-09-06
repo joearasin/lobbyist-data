@@ -55,7 +55,6 @@ def list():
     files = [e.attrs['value'] for e in r.html.xpath("//option")]
     for file in files:
         (year, reg, rest) = file.split(' ', maxsplit=2)
-        tree.getroot()
         print("{}\t{}".format(year, reg))
 
 if __name__ == '__main__':
