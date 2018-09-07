@@ -31,3 +31,11 @@ output/house/%_Registrations_ForeignEntities.csv: data/files/house/%_Registratio
 output/house/%_Reports.csv: data/files/house/%_XML.zip
 	mkdir -p $(dir $@)
 	./house_processor.py reports $< > $@
+
+output/house/%_Reports_Issues.csv: data/files/house/%_XML.zip
+	mkdir -p $(dir $@)
+	./house_processor.py reports_issues $< > $@
+
+output/house/%_Reports_Lobbyists.csv: data/files/house/%_XML.zip
+	mkdir -p $(dir $@)
+	./house_processor.py reports_lobbyists $< > $@

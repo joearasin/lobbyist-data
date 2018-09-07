@@ -11,11 +11,6 @@ import sys
 import zipfile
 
 
-@click.group()
-def cli():
-    pass
-
-
 LOBBYIST_COLUMNS = ['first_name', 'last_name',
                     'suffix', 'covered_position', 'new']
 Lobbyist = namedtuple('Lobbyist', LOBBYIST_COLUMNS)
@@ -37,8 +32,31 @@ REPORT_COLUMNS = ['organization_name', 'prefix', 'first_name', 'last_name', 'reg
 Report = namedtuple('Report', REPORT_COLUMNS)
 
 
+ISSUE_COLUMNS = ['ali_code', 'specific_issues',
+                 'federal_agencies', 'lobbyists', 'foreign_entity_issues']
+Issue = namedtuple('Issue', ISSUE_COLUMNS)
+
+
 def clean(field):
     return str(field).strip()
+
+
+def read_lobbyist(lobbyist):
+    return Lobbyist(clean(lobbyist.lobbyistFirstName),
+                    clean(lobbyist.lobbyistLastName),
+                    clean(lobbyist.lobbyistSuffix),
+                    clean(lobbyist.coveredPosition),
+                    clean(lobbyist.lobbyistNew) == 'Y')
+
+
+def is_valid_lobbyist(lobbyist):
+    return clean(lobbyist.lobbyistFirstName) or clean(lobbyist.lobbyistLastName)
+
+
+def read_lobbyists(lobbyists):
+    return [read_lobbyist(lobbyist)
+            for lobbyist in lobbyists.lobbyist
+            if is_valid_lobbyist(lobbyist)]
 
 
 class HouseRegistrationsFile:
@@ -55,13 +73,7 @@ class HouseRegistrationsFile:
                 "Document is not an LOBBYINGDISCLOSURE1. It is a {}".format(obj.tag))
 
     def lobbyists(self):
-        lobbyists = self.obj.lobbyists
-        return [Lobbyist(clean(lobbyist.lobbyistFirstName),
-                         clean(lobbyist.lobbyistLastName),
-                         clean(lobbyist.lobbyistSuffix),
-                         clean(lobbyist.coveredPosition),
-                         clean(lobbyist.lobbyistNew) == 'Y') for lobbyist in lobbyists.lobbyist if clean(lobbyist.lobbyistFirstName) or clean(lobbyist.lobbyistLastName)
-                ]
+        return read_lobbyists(self.obj.lobbyists)
 
     def registration(self):
         def get_column(c): return clean(
@@ -165,6 +177,16 @@ class HouseReportFile:
             get_column('signedDate'),
             get_column('signerEmail'))
 
+    def issues(self):
+        issue_info = self.obj.alis.ali_info
+        return [Issue(clean(issue.issueAreaCode),
+                      [clean(desc)
+                       for desc in issue.specific_issues.description if clean(desc)],
+                      clean(issue.federal_agencies),
+                      read_lobbyists(issue.lobbyists),
+                      clean(issue.foreign_entity_issues)
+                      ) for issue in issue_info if clean(issue.issueAreaCode)]
+
 
 def read_files(files):
     for file in files:
@@ -197,6 +219,11 @@ def read_reports(files):
         except ValueError as err:
             print("Could not read {}. Error: {}".format(
                 file_id, err), file=sys.stderr)
+
+
+@click.group()
+def cli():
+    pass
 
 
 @cli.command()
@@ -258,8 +285,35 @@ def foreign_entities(files):
 def reports(files):
     COLUMNS = ['id'] + REPORT_COLUMNS
     data = tablib.Dataset(headers=COLUMNS)
-    for (file_id, registration) in read_reports(files):
-        data.append([file_id] + list(registration.report()))
+    for (file_id, report) in read_reports(files):
+        data.append([file_id] + list(report.report()))
+    sys.stdout.buffer.write(data.export('csv').encode())
+
+
+@cli.command()
+@click.argument('files', nargs=-1, type=click.Path())
+def report_issues(files):
+    COLUMNS = ['report_id', 'issue_index',
+               'ali_code', 'specific_issues', 'federal_agencies', 'foreign_entity_issues']
+    data = tablib.Dataset(headers=COLUMNS)
+    for (file_id, report) in read_reports(files):
+        for idx, issue in enumerate(report.issues()):
+            data.append([file_id, idx, issue.ali_code, "\n".join(issue.specific_issues),
+                         issue.federal_agencies, issue.foreign_entity_issues])
+
+    sys.stdout.buffer.write(data.export('csv').encode())
+
+
+@cli.command()
+@click.argument('files', nargs=-1, type=click.Path())
+def reports_lobbyists(files):
+    COLUMNS = ['report_id', 'issue_index', 'ali_code'] + LOBBYIST_COLUMNS
+    data = tablib.Dataset(headers=COLUMNS)
+    for (file_id, report) in read_reports(files):
+        for idx, issue in enumerate(report.issues()):
+            for lobbyist in issue.lobbyists:
+                data.append([file_id, idx, issue.ali_code] + list(lobbyist))
+
     sys.stdout.buffer.write(data.export('csv').encode())
 
 
