@@ -2,7 +2,7 @@
 
 import click
 import tablib
-from lxml import objectify
+from lxml import objectify, etree
 from os import path
 import os
 from pathlib import Path
@@ -221,7 +221,9 @@ def read_foreign_entities(entities):
                 clean(entity.prinState),
                 clean(entity.prinCountry),
                 clean(entity.contribution),
-                clean(entity.ownership_Percentage),
+                clean(entity.ownership_Percentage)
+                if hasattr(entity, "ownership_Percentage")
+                else clean(entity.Ownership_percentage),
             )
             for entity in entities.foreignEntity
             if clean(entity.name)
