@@ -310,12 +310,15 @@ class HouseRegistrationsFile:
         return read_foreign_entities(self.obj.foreignEntities)
 
 
+recovering_parser = objectify.makeparser(recover=True)
+
+
 class HouseReportFile:
     def __init__(self, contents):
         if path.isfile(contents):
-            obj = objectify.parse(contents).getroot()
+            obj = objectify.parse(contents, parser=recovering_parser).getroot()
         else:
-            obj = objectify.fromstring(contents)
+            obj = objectify.fromstring(contents, parser=recovering_parser)
         if "LOBBYINGDISCLOSURE2" in obj.tag:
             # Match on substring b/c some documents have a namespace
             self.obj = obj
