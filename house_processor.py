@@ -179,11 +179,54 @@ def is_valid_lobbyist(lobbyist):
 
 
 def read_lobbyists(lobbyists):
-    return [
-        read_lobbyist(lobbyist)
-        for lobbyist in lobbyists.lobbyist
-        if is_valid_lobbyist(lobbyist)
-    ]
+    if hasattr(lobbyists, "lobbyist"):
+        return [
+            read_lobbyist(lobbyist)
+            for lobbyist in lobbyists.lobbyist
+            if is_valid_lobbyist(lobbyist)
+        ]
+    return []
+
+
+def read_affiliated_orgs(orgs):
+    if hasattr(orgs, "affiliatedOrg"):
+        return [
+            AffiliatedOrg(
+                clean(org.affiliatedOrgName),
+                clean(org.affiliatedOrgAddress),
+                clean(org.affiliatedOrgCity),
+                clean(org.affiliatedOrgState),
+                clean(org.affiliatedOrgZip),
+                clean(org.affiliatedOrgCountry),
+                clean(org.affiliatedPrinOrgCity),
+                clean(org.affiliatedPrinOrgState),
+                clean(org.affiliatedPrinOrgCountry),
+            )
+            for org in orgs.affiliatedOrg
+            if clean(org.affiliatedOrgName)
+        ]
+    return []
+
+
+def read_foreign_entities(entities):
+    if hasattr(entities, "foreignEntity"):
+        return [
+            ForeignEntity(
+                clean(entity.name),
+                clean(entity.address),
+                clean(entity.city),
+                clean(entity.state),
+                clean(entity.country),
+                clean(entity.prinCity),
+                clean(entity.prinState),
+                clean(entity.prinCountry),
+                clean(entity.contribution),
+                clean(entity.ownership_Percentage),
+            )
+            for entity in entities.foreignEntity
+            if clean(entity.name)
+        ]
+    return []
 
 
 class HouseRegistrationsFile:
@@ -259,41 +302,10 @@ class HouseRegistrationsFile:
         return []
 
     def affiliated_orgs(self):
-        affiliated_orgs = self.obj.affiliatedOrgs
-        return [
-            AffiliatedOrg(
-                clean(org.affiliatedOrgName),
-                clean(org.affiliatedOrgAddress),
-                clean(org.affiliatedOrgCity),
-                clean(org.affiliatedOrgState),
-                clean(org.affiliatedOrgZip),
-                clean(org.affiliatedOrgCountry),
-                clean(org.affiliatedPrinOrgCity),
-                clean(org.affiliatedPrinOrgState),
-                clean(org.affiliatedPrinOrgCountry),
-            )
-            for org in affiliated_orgs.affiliatedOrg
-            if clean(org.affiliatedOrgName)
-        ]
+        return read_affiliated_orgs(self.obj.affiliatedOrgs)
 
     def foreign_entities(self):
-        foreign_entities = self.obj.foreignEntities
-        return [
-            ForeignEntity(
-                clean(entity.name),
-                clean(entity.address),
-                clean(entity.city),
-                clean(entity.state),
-                clean(entity.country),
-                clean(entity.prinCity),
-                clean(entity.prinState),
-                clean(entity.prinCountry),
-                clean(entity.contribution),
-                clean(entity.ownership_Percentage),
-            )
-            for entity in foreign_entities.foreignEntity
-            if clean(entity.name)
-        ]
+        return read_foreign_entities(self.obj.foreignEntities)
 
 
 class HouseReportFile:
@@ -369,34 +381,70 @@ class HouseReportFile:
         )
 
     def issues(self):
-        issue_info = self.obj.alis.ali_info
-        return [
-            Issue(
-                clean(issue.issueAreaCode),
-                [
-                    clean(desc)
-                    for desc in issue.specific_issues.description
-                    if clean(desc)
-                ],
-                clean(issue.federal_agencies),
-                read_lobbyists(issue.lobbyists),
-                clean(issue.foreign_entity_issues),
-            )
-            for issue in issue_info
-            if clean(issue.issueAreaCode)
-        ]
+        issues = self.obj.alis
+        if hasattr(issues, "ali_info"):
+            return [
+                Issue(
+                    clean(issue.issueAreaCode),
+                    [
+                        clean(desc)
+                        for desc in issue.specific_issues.description
+                        if clean(desc)
+                    ],
+                    clean(issue.federal_agencies),
+                    read_lobbyists(issue.lobbyists),
+                    clean(issue.foreign_entity_issues),
+                )
+                for issue in issues.ali_info
+                if clean(issue.issueAreaCode)
+            ]
+        return []
+
+    def affiliated_orgs(self):
+        return read_affiliated_orgs(self.obj.updates.affiliatedOrgs)
+
+    def foreign_entities(self):
+        return read_foreign_entities(self.obj.updates.foreignEntities)
+
+    def inactive_foreign_entities(self):
+        inactive_entities = self.obj.updates.inactive_ForeignEntities
+        if hasattr(inactive_entities, "inactive_ForeignEntity"):
+            return [
+                clean(org)
+                for org in inactive_entities.inactive_ForeignEntity
+                if is_nonempty(org)
+            ]
+        return []
 
     def inactive_lobbyists(self):
         inactive_lobbyists = self.obj.updates.inactive_lobbyists
-        return [
-            InactiveLobbyist(
-                clean(lobbyist.firstName),
-                clean(lobbyist.lastName),
-                clean(lobbyist.suffix),
-            )
-            for lobbyist in inactive_lobbyists.inactive_lobbyist
-            if is_nonempty(lobbyist.firstName) or is_nonempty(lobbyist.lastName)
-        ]
+        if hasattr(inactive_lobbyists, "inactive_lobbyist"):
+            return [
+                InactiveLobbyist(
+                    clean(lobbyist.firstName),
+                    clean(lobbyist.lastName),
+                    clean(lobbyist.suffix),
+                )
+                for lobbyist in inactive_lobbyists.inactive_lobbyist
+                if is_nonempty(lobbyist.firstName) or is_nonempty(lobbyist.lastName)
+            ]
+        return []
+
+    def inactive_issues(self):
+        inactive_issues = self.obj.updates.inactive_ALIs
+        if hasattr(inactive_issues, "ali_Code"):
+            return [
+                clean(issue) for issue in inactive_issues.ali_Code if is_nonempty(issue)
+            ]
+        return []
+
+    def inactive_orgs(self):
+        inactive_orgs = self.obj.updates.inactiveOrgs
+        if hasattr(inactive_orgs, "inactiveOrgName"):
+            return [
+                clean(org) for org in inactive_orgs.inactiveOrgName if is_nonempty(org)
+            ]
+        return []
 
 
 def read_files(files):
@@ -549,6 +597,62 @@ def report_inactive_lobbyists(files):
         for lobbyist in report.inactive_lobbyists():
             data.append([file_id] + list(lobbyist))
 
+    sys.stdout.buffer.write(data.export("csv").encode())
+
+
+@cli.command()
+@click.argument("files", nargs=-1, type=click.Path())
+def report_inactive_issues(files):
+    COLUMNS = ["report_id", "ali_code"]
+    data = tablib.Dataset(headers=COLUMNS)
+    for (file_id, report) in read_reports(files):
+        for issue in report.inactive_issues():
+            data.append([file_id, issue])
+
+    sys.stdout.buffer.write(data.export("csv").encode())
+
+
+@cli.command()
+@click.argument("files", nargs=-1, type=click.Path())
+def report_affiliated_orgs(files):
+    COLUMNS = ["report_id"] + AFFILIATED_ORG_COLUMNS
+    data = tablib.Dataset(headers=COLUMNS)
+    for (file_id, report) in read_reports(files):
+        for org in report.affiliated_orgs():
+            data.append([file_id] + list(org))
+    sys.stdout.buffer.write(data.export("csv").encode())
+
+
+@cli.command()
+@click.argument("files", nargs=-1, type=click.Path())
+def report_inactive_orgs(files):
+    COLUMNS = ["report_id", "organization_name"]
+    data = tablib.Dataset(headers=COLUMNS)
+    for (file_id, report) in read_reports(files):
+        for org in report.inactive_orgs():
+            data.append([file_id, org])
+    sys.stdout.buffer.write(data.export("csv").encode())
+
+
+@cli.command()
+@click.argument("files", nargs=-1, type=click.Path())
+def report_foreign_entities(files):
+    COLUMNS = ["report_id"] + FOREIGN_ENTITY_COLUMNS
+    data = tablib.Dataset(headers=COLUMNS)
+    for (file_id, report) in read_reports(files):
+        for entity in report.foreign_entities():
+            data.append([file_id] + list(entity))
+    sys.stdout.buffer.write(data.export("csv").encode())
+
+
+@cli.command()
+@click.argument("files", nargs=-1, type=click.Path())
+def report_inactive_foreign_entities(files):
+    COLUMNS = ["report_id", "entity_name"]
+    data = tablib.Dataset(headers=COLUMNS)
+    for (file_id, report) in read_reports(files):
+        for entity in report.inactive_foreign_entities():
+            data.append([file_id, entity])
     sys.stdout.buffer.write(data.export("csv").encode())
 
 
