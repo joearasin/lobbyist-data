@@ -1,8 +1,32 @@
 .DELETE_ON_ERROR:
 
-.PHONY: all senate_all house_all
+.PHONY: all senate_all house_all senate_stacks house_stacks house_registration_stacks
 
 all: senate_all house_all
+
+senate_stacks: output/stacked/senate/Filings.csv output/stacked/senate/Lobbyists.csv  output/stacked/senate/Government_Entities.csv output/stacked/senate/Issues.csv output/stacked/senate/ForeignEntities.csv output/stacked/senate/AffiliatedOrgs.csv
+
+house_stacks: house_registration_stacks house_report_stacks
+
+house_registration_stacks: output/stacked/house/Registrations_AffiliatedOrgs.csv output/stacked/house/Registrations_ForeignEntities.csv output/stacked/house/Registrations_Issues.csv output/stacked/house/Registrations_Lobbyists.csv output/stacked/house/Registrations_Records.csv
+
+house_report_stacks: output/stacked/house/Reports.csv \
+	 									 output/stacked/house/Reports_Affiliated_Orgs.csv \
+										 output/stacked/house/Reports_ForeignEntities.csv \
+										 output/stacked/house/Reports_Issues.csv \
+										 output/stacked/house/Reports_Lobbyists.csv \
+										 output/stacked/house/Reports_Inactive_ForeignEntities.csv \
+										 output/stacked/house/Reports_Inactive_Issues.csv \
+										 output/stacked/house/Reports_Inactive_Lobbyists.csv \
+										 output/stacked/house/Reports_Inactive_Orgs.csv
+
+output/stacked/house/%.csv:
+	mkdir -p $(dir $@)
+	./stack.py house output/house/*_$(notdir $@) > $@
+
+output/stacked/senate/%.csv:
+	mkdir -p $(dir $@)
+	./stack.py senate output/senate/*_$(notdir $@) > $@
 
 senate_all: output/senate/1999_Year output/senate/2000_Year output/senate/2001_Year \
 	output/senate/2002_Year output/senate/2003_Year output/senate/2004_Year output/senate/2005_Year \
